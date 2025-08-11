@@ -2,7 +2,7 @@
 #include <fstream>
 #include <random>
 
-bool createFileWithRandomNumbers(const std::string& fileName, const int numbersCount, const int maxNumberValue) {
+bool createFileWithRandomNumbers(const std::string& fileName, const int numbersCount, const int minNumberValue, const int maxNumberValue) {
     std::ofstream file(fileName);
     if (!file.is_open()) {
         return false;
@@ -10,7 +10,7 @@ bool createFileWithRandomNumbers(const std::string& fileName, const int numbersC
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dis(0, maxNumberValue);
+    std::uniform_int_distribution<int> dis(minNumberValue, maxNumberValue);
 
     // Генерируем числа порциями, чтобы не загружать всю память
     const int batchSize = 10000;
@@ -56,7 +56,7 @@ bool isFileContainsSortedArray(const std::string& fileName) {
 
 int main()
 {
-    createFileWithRandomNumbers("file.txt", 1000000, 1000000);
+    createFileWithRandomNumbers("file.txt", 10000000, -1000000, 1000000);
 
     std::cout << isFileContainsSortedArray("file.txt");
 }
