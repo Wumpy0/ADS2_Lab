@@ -14,7 +14,9 @@ std::vector<std::string> createTempFiles(int auxiliaryFiles) {
 
 long long countNumbersInFile(const std::string& fileName) {
     std::ifstream file(fileName);
-    if (!file.is_open()) return 0;
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open " + fileName);
+    }
 
     long long count = 0;
     int temp;
@@ -31,27 +33,78 @@ void cleanupTempFiles(const std::vector<std::string>& tempFiles) {
     }
 }
 
-bool multiphaseSort(const std::string& inputFile, const std::string& outputFile, int auxiliaryFiles = 3) {
+bool multiphaseSort(const std::string& inputFile, const std::string& outputFile, int auxiliaryFiles = 3, long long inputFileSize = -1) {
+    std::cout << "Starting multiphaseSort()..." << std::endl;
     if (auxiliaryFiles < 2) {
         auxiliaryFiles = 2;
     }
+    std::cout << "Number of auxiliaryFiles: " << auxiliaryFiles << std::endl;
+    std::cout << "Input file: " << inputFile << std::endl;
+    std::cout << "Output file: " << outputFile << std::endl;
 
     std::vector<std::string> tempFiles = createTempFiles(auxiliaryFiles);
 
-    long long totalNumbers = countNumbersInFile(inputFile);
-    if (totalNumbers == 0) {
-        cleanupTempFiles(tempFiles);
-        return false;
+    if (inputFileSize < 0) {
+        long long inputFileSize = countNumbersInFile(inputFile);
+    }
+    if (inputFileSize == 0) {
+        return true;
+    }
+    std::cout << "Size of input file: " << inputFileSize << std::endl;
+
+    // Разделяем исходный файл
+    int runSize = std::max(1000LL, inputFileSize / (auxiliaryFiles * 100));
+    std::cout << "Run size: " << runSize << std::endl;
+    std::cout << "Splitting the input file..." << std::endl;
+
+    std::ifstream input(inputFile);
+    if (!input.is_open()) {
+        throw std::runtime_error("Cannot open input file");
     }
 
+    std::vector<int> buffer(runSize);
+    int currentFile = 0;
+    int number;
 
+    while (input >> number) {
+        buffer.clear();
+        buffer.push_back(number);
+
+        // Читаем блок размером runSize
+        for (int i = 1; i < runSize && (input >> number); i++) {
+            buffer.push_back(number);
+        }
+
+        // Сортируем блок
+        std::sort(buffer.begin(), buffer.end());
+
+        // Записываем отсортированный блок во временный файл
+        std::ofstream tempFile(tempFiles[currentFile], std::ios::app);
+        if (!tempFile.is_open()) {
+            throw std::runtime_error("Cannot open temporary file: " + tempFiles[currentFile]);
+        }
+
+        for (size_t i = 0; i < buffer.size(); i++) {
+            tempFile << buffer[i];
+            if (i < buffer.size() - 1) tempFile << " ";
+        }
+        tempFile << "\n"; // Разделитель между отсортированными блоками
+        tempFile.close();
+
+        currentFile = (currentFile + 1) % tempFiles.size();
+    }
+
+    input.close();
+    std::cout << "Time to check... ";
+    std::cin.get();
+    cleanupTempFiles(tempFiles);
     return true;
 }
 
 bool createFileWithRandomNumbers(const std::string& fileName, const int numbersCount, const int minNumberValue, const int maxNumberValue) {
     std::ofstream file(fileName);
     if (!file.is_open()) {
-        return false;
+        throw std::runtime_error("Cannot open " + fileName + " during the generation random numbers");
     }
 
     std::random_device rd;
@@ -79,7 +132,7 @@ bool createFileWithRandomNumbers(const std::string& fileName, const int numbersC
 bool isFileContainsSortedArray(const std::string& fileName) {
     std::ifstream file(fileName);
     if (!file.is_open()) {
-        return false;
+        throw std::runtime_error("Cannot open " + fileName + " during the sorting check");
     }
 
     int current, next;
@@ -104,14 +157,10 @@ bool isFileContainsSortedArray(const std::string& fileName) {
 
 int main()
 {
-    //std::cout << "counting...\n";
-    //std::cout << countNumbersInFile("file.txt") << std::endl;
-    std::vector<std::string> tempFiles = createTempFiles(5);
-    for (auto tempFile : tempFiles) {
-        std::ofstream file(tempFile);
-        file.close();
+    try {
+        multiphaseSort("file.txt", "result.txt", 5, 1000000);
+    } 
+    catch (const std::runtime_error& e) {
+        std::cout << "Error: " << e.what() << std::endl;
     }
-    std::cout << "...\n";
-    std::cin.get();
-    cleanupTempFiles(tempFiles);
 }
