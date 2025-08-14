@@ -3,6 +3,7 @@
 #include <random>
 #include <vector>
 #include <string>
+#include <chrono>
 
 std::vector<std::string> createTempFiles(int auxiliaryFiles) {
     std::vector<std::string> tempFiles;
@@ -55,7 +56,7 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
     // Разделяем исходный файл
     int runSize = std::max(1000LL, inputFileSize / (auxiliaryFiles * 100));
     std::cout << "Run size: " << runSize << std::endl;
-    std::cout << "Splitting the input file..." << std::endl;
+    std::cout << "1. Splitting the input file..." << std::endl;
 
     std::ifstream input(inputFile);
     if (!input.is_open()) {
@@ -66,6 +67,18 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
     int currentFile = 0;
     int number;
 
+    auto start = std::chrono::high_resolution_clock::now();
+
+    // Открываем вспомогательные файлы
+    std::vector<std::ofstream> outputStreams;
+    for (const auto& fileName : tempFiles) {
+        std::ofstream stream(fileName, std::ios::app);
+        if (!stream.is_open()) {
+            throw std::runtime_error("Cannot open temporary file: " + fileName);
+        }
+        outputStreams.push_back(std::move(stream));
+    }
+    // Записываем блоки в файлы
     while (input >> number) {
         buffer.clear();
         buffer.push_back(number);
@@ -79,24 +92,25 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         std::sort(buffer.begin(), buffer.end());
 
         // Записываем отсортированный блок во временный файл
-        std::ofstream tempFile(tempFiles[currentFile], std::ios::app);
-        if (!tempFile.is_open()) {
-            throw std::runtime_error("Cannot open temporary file: " + tempFiles[currentFile]);
-        }
-
         for (size_t i = 0; i < buffer.size(); i++) {
-            tempFile << buffer[i];
-            if (i < buffer.size() - 1) tempFile << " ";
+            outputStreams[currentFile] << buffer[i];
+            if (i < buffer.size() - 1) outputStreams[currentFile] << " ";
         }
-        tempFile << "\n"; // Разделитель между отсортированными блоками
-        tempFile.close();
+        outputStreams[currentFile] << "\n"; // Разделитель между отсортированными блоками
 
         currentFile = (currentFile + 1) % tempFiles.size();
     }
+    // Закрываем вспомогательные файлы
+    for (auto& stream : outputStreams) {
+        stream.close();
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "Time needed for splitting: " << duration << " ms\n";
 
     input.close();
-    std::cout << "Time to check... ";
-    std::cin.get();
+
     cleanupTempFiles(tempFiles);
     return true;
 }
