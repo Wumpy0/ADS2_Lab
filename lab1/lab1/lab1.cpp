@@ -5,10 +5,10 @@
 #include <string>
 #include <chrono>
 
-std::vector<std::string> createTempFiles(int auxiliaryFiles) {
+std::vector<std::string> createTempFiles(int auxiliaryFiles, std::string pattern = "temp_") {
     std::vector<std::string> tempFiles;
     for (int i = 0; i < auxiliaryFiles; i++) {
-        tempFiles.push_back("temp_" + std::to_string(i) + ".txt");
+        tempFiles.push_back(pattern + std::to_string(i) + ".txt");
     }
     return tempFiles;
 }
@@ -65,27 +65,25 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
 
     std::vector<int> buffer(runSize);
     int currentFile = 0;
-    int number;
-
-    auto start = std::chrono::high_resolution_clock::now();
+    int numberFromFile;
 
     // Открываем вспомогательные файлы
-    std::vector<std::ofstream> outputStreams;
+    std::vector<std::ofstream> outputTempFilesStreams;
     for (const auto& fileName : tempFiles) {
         std::ofstream stream(fileName, std::ios::app);
         if (!stream.is_open()) {
             throw std::runtime_error("Cannot open temporary file: " + fileName);
         }
-        outputStreams.push_back(std::move(stream));
+        outputTempFilesStreams.push_back(std::move(stream));
     }
     // Записываем блоки в файлы
-    while (input >> number) {
+    while (input >> numberFromFile) {
         buffer.clear();
-        buffer.push_back(number);
+        buffer.push_back(numberFromFile);
 
         // Читаем блок размером runSize
-        for (int i = 1; i < runSize && (input >> number); i++) {
-            buffer.push_back(number);
+        for (int i = 1; i < runSize && (input >> numberFromFile); i++) {
+            buffer.push_back(numberFromFile);
         }
 
         // Сортируем блок
@@ -93,23 +91,91 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
 
         // Записываем отсортированный блок во временный файл
         for (size_t i = 0; i < buffer.size(); i++) {
-            outputStreams[currentFile] << buffer[i];
-            if (i < buffer.size() - 1) outputStreams[currentFile] << " ";
+            outputTempFilesStreams[currentFile] << buffer[i];
+            if (i < buffer.size() - 1) outputTempFilesStreams[currentFile] << " ";
         }
-        outputStreams[currentFile] << "\n"; // Разделитель между отсортированными блоками
+        outputTempFilesStreams[currentFile] << "\n"; // Разделитель между отсортированными блоками
 
         currentFile = (currentFile + 1) % tempFiles.size();
     }
-    // Закрываем вспомогательные файлы
-    for (auto& stream : outputStreams) {
+    // Закрываем файлы
+    for (auto& stream : outputTempFilesStreams) {
         stream.close();
     }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    std::cout << "Time needed for splitting: " << duration << " ms\n";
-
     input.close();
+
+    // Фаза слияния
+    std::cout << "2. Merging phase..." << std::endl;
+    int mergingPhaseNumber = 1;
+    bool hasMorePhase = true;
+    while (hasMorePhase) {
+        std::cout << "  Merging phase №" + std::to_string(mergingPhaseNumber) << std::endl;
+        // Проверяем, какие файлы содержат данные
+        std::vector<int> activeFiles;
+        for (int i = 0; i < auxiliaryFiles; i++) {
+            std::ifstream file(tempFiles[i]);
+            if (file.is_open()) {
+                std::string line;
+                if (std::getline(file, line) && !line.empty()) {
+                    activeFiles.push_back(i);
+                }
+                file.close();
+            }
+        }
+
+        if (activeFiles.size() <= 1) {
+            hasMorePhase = false; // Сортировка завершена или нечего сливать
+        }
+
+        // Создаём новые вспомогательные файлы для записи в них
+        std::vector<std::string> newTempFiles = createTempFiles(auxiliaryFiles, "new_temp_");
+
+        // Открываем вспомогательные файлы для чтения
+        std::vector<std::ifstream> inputTempFilesStreams;
+        for (const auto& fileName : tempFiles) {
+            std::ifstream stream(fileName);
+            if (!stream.is_open()) {
+                throw std::runtime_error("Cannot open temporary file: " + fileName);
+            }
+            inputTempFilesStreams.push_back(std::move(stream));
+        }
+
+        // Открываем новые вспомогательные файлы для записи
+        std::vector<std::ofstream> outputNewTempFilesStreams;
+        for (const auto& fileName : newTempFiles) {
+            std::ofstream stream(fileName, std::ios::app);
+            if (!stream.is_open()) {
+                throw std::runtime_error("Cannot open temporary file: " + fileName);
+            }
+            outputTempFilesStreams.push_back(std::move(stream));
+        }
+        
+        // Сливаем блоки
+        int outputFileIndex = 0;
+        bool hasMoreRuns = true;
+
+        while (hasMoreRuns) {
+
+        }
+
+        // Закрываем все вспомогательные файлы
+        for (auto& stream : inputTempFilesStreams) {
+            stream.close();
+        }
+        for (auto& stream : outputNewTempFilesStreams) {
+            stream.close();
+        }
+
+        // Заменяем старые временные файлы новыми
+        for (int i = 0; i < auxiliaryFiles; i++) {
+            std::remove(tempFiles[i].c_str());
+            std::rename(newTempFiles[i].c_str(), tempFiles[i].c_str());
+        }
+
+        mergingPhaseNumber++;
+    }
+
+
 
     cleanupTempFiles(tempFiles);
     return true;
