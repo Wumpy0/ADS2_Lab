@@ -5,6 +5,62 @@
 #include <string>
 #include <chrono>
 
+std::ifstream openInputFile(const std::string& fileName, std::ios::openmode mode = std::ios::in) {
+    std::ifstream file(fileName, mode);
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open " + fileName);
+    }
+    return file;
+}
+
+std::ofstream openOutputFile(const std::string& fileName, std::ios::openmode mode = std::ios::out) {
+    std::ofstream file(fileName, mode);
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open " + fileName);
+    }
+    return file;
+}
+
+std::vector<std::ifstream> openInputFiles(const std::vector<std::string>& fileNames, std::ios::openmode mode = std::ios::in) {
+    std::vector<std::ifstream> streams;
+    streams.reserve(fileNames.size());
+
+    for (const auto& name : fileNames) {
+        streams.emplace_back(name, mode);
+        if (!streams.back().is_open()) {
+            throw std::runtime_error("Cannot open " + name);
+        }
+    }
+
+    return streams;
+}
+
+std::vector<std::ofstream> openOutputFiles(const std::vector<std::string>& fileNames, std::ios::openmode mode = std::ios::out) {
+    std::vector<std::ofstream> streams;
+    streams.reserve(fileNames.size());
+
+    for (const auto& name : fileNames) {
+        streams.emplace_back(name, mode);
+        if (!streams.back().is_open()) {
+            throw std::runtime_error("Cannot open " + name);
+        }
+    }
+
+    return streams;
+}
+
+void closeAllFiles(std::vector<std::ofstream>& fileNames) {
+    for (auto& stream : fileNames) {
+        stream.close();
+    }
+}
+
+void closeAllFiles(std::vector<std::ifstream>& fileNames) {
+    for (auto& stream : fileNames) {
+        stream.close();
+    }
+}
+
 std::vector<std::string> createTempFiles(int auxiliaryFiles, std::string pattern = "temp_") {
     std::vector<std::string> tempFiles;
     for (int i = 0; i < auxiliaryFiles; i++) {
@@ -14,11 +70,7 @@ std::vector<std::string> createTempFiles(int auxiliaryFiles, std::string pattern
 }
 
 long long countNumbersInFile(const std::string& fileName) {
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        throw std::runtime_error("Cannot open " + fileName);
-    }
-
+    std::ifstream file = openInputFile(fileName);
     long long count = 0;
     int temp;
     while (file >> temp) {
@@ -46,7 +98,7 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
     std::vector<std::string> tempFiles = createTempFiles(auxiliaryFiles);
 
     if (inputFileSize < 0) {
-        long long inputFileSize = countNumbersInFile(inputFile);
+        inputFileSize = countNumbersInFile(inputFile);
     }
     if (inputFileSize == 0) {
         return true;
@@ -58,24 +110,15 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
     std::cout << "Run size: " << runSize << std::endl;
     std::cout << "1. Splitting the input file..." << std::endl;
 
-    std::ifstream input(inputFile);
-    if (!input.is_open()) {
-        throw std::runtime_error("Cannot open input file");
-    }
+    std::ifstream input = openInputFile(inputFile);
 
     std::vector<int> buffer(runSize);
     int currentFile = 0;
     int numberFromFile;
 
     // Открываем вспомогательные файлы
-    std::vector<std::ofstream> outputTempFilesStreams;
-    for (const auto& fileName : tempFiles) {
-        std::ofstream stream(fileName, std::ios::app);
-        if (!stream.is_open()) {
-            throw std::runtime_error("Cannot open temporary file: " + fileName);
-        }
-        outputTempFilesStreams.push_back(std::move(stream));
-    }
+    std::vector<std::ofstream> outputTempFilesStreams = openOutputFiles(tempFiles, std::ios::app);
+
     // Записываем блоки в файлы
     while (input >> numberFromFile) {
         buffer.clear();
@@ -99,9 +142,7 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         currentFile = (currentFile + 1) % tempFiles.size();
     }
     // Закрываем файлы
-    for (auto& stream : outputTempFilesStreams) {
-        stream.close();
-    }
+    closeAllFiles(outputTempFilesStreams);
     input.close();
 
     // Фаза слияния
@@ -131,40 +172,22 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         std::vector<std::string> newTempFiles = createTempFiles(auxiliaryFiles, "new_temp_");
 
         // Открываем вспомогательные файлы для чтения
-        std::vector<std::ifstream> inputTempFilesStreams;
-        for (const auto& fileName : tempFiles) {
-            std::ifstream stream(fileName);
-            if (!stream.is_open()) {
-                throw std::runtime_error("Cannot open temporary file: " + fileName);
-            }
-            inputTempFilesStreams.push_back(std::move(stream));
-        }
+        std::vector<std::ifstream> inputTempFilesStreams = openInputFiles(tempFiles);
 
         // Открываем новые вспомогательные файлы для записи
-        std::vector<std::ofstream> outputNewTempFilesStreams;
-        for (const auto& fileName : newTempFiles) {
-            std::ofstream stream(fileName, std::ios::app);
-            if (!stream.is_open()) {
-                throw std::runtime_error("Cannot open temporary file: " + fileName);
-            }
-            outputTempFilesStreams.push_back(std::move(stream));
-        }
+        std::vector<std::ofstream> outputNewTempFilesStreams = openOutputFiles(newTempFiles, std::ios::app);
         
         // Сливаем блоки
         int outputFileIndex = 0;
         bool hasMoreRuns = true;
 
         while (hasMoreRuns) {
-
+            
         }
 
         // Закрываем все вспомогательные файлы
-        for (auto& stream : inputTempFilesStreams) {
-            stream.close();
-        }
-        for (auto& stream : outputNewTempFilesStreams) {
-            stream.close();
-        }
+        closeAllFiles(inputTempFilesStreams);
+        closeAllFiles(outputNewTempFilesStreams);
 
         // Заменяем старые временные файлы новыми
         for (int i = 0; i < auxiliaryFiles; i++) {
@@ -182,10 +205,7 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
 }
 
 bool createFileWithRandomNumbers(const std::string& fileName, const int numbersCount, const int minNumberValue, const int maxNumberValue) {
-    std::ofstream file(fileName);
-    if (!file.is_open()) {
-        throw std::runtime_error("Cannot open " + fileName + " during the generation random numbers");
-    }
+    std::ofstream file = openOutputFile(fileName);
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -210,10 +230,7 @@ bool createFileWithRandomNumbers(const std::string& fileName, const int numbersC
 }
 
 bool isFileContainsSortedArray(const std::string& fileName) {
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        throw std::runtime_error("Cannot open " + fileName + " during the sorting check");
-    }
+    std::ifstream file = openInputFile(fileName);
 
     int current, next;
     if (!(file >> current)) {
@@ -239,6 +256,7 @@ int main()
 {
     try {
         multiphaseSort("file.txt", "result.txt", 5, 1000000);
+        std::cout << (isFileContainsSortedArray("result.txt")) ? "File is sorted!" : "After multiphaseSort() file still unsorted";
     } 
     catch (const std::runtime_error& e) {
         std::cout << "Error: " << e.what() << std::endl;
