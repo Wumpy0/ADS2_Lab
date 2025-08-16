@@ -4,6 +4,18 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <queue>
+#include <sstream>
+
+struct MergeElement
+{
+    int value;
+    int fileIndex;
+
+    bool operator>(const MergeElement& other) const {
+        return value > other.value;
+    }
+};
 
 std::ifstream openInputFile(const std::string& fileName, std::ios::openmode mode = std::ios::in) {
     std::ifstream file(fileName, mode);
@@ -117,7 +129,7 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
     int numberFromFile;
 
     // Открываем вспомогательные файлы
-    std::vector<std::ofstream> outputTempFilesStreams = openOutputFiles(tempFiles, std::ios::app);
+    std::vector<std::ofstream> outputTempFilesStreams = openOutputFiles(tempFiles);
 
     // Записываем блоки в файлы
     while (input >> numberFromFile) {
@@ -150,29 +162,31 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
     int mergingPhaseNumber = 1;
     bool hasMorePhase = true;
     while (hasMorePhase) {
-        std::cout << "  Merging phase №" + std::to_string(mergingPhaseNumber) << std::endl;
-        // Проверяем, какие файлы содержат данные
-        std::vector<int> activeFiles;
-        for (int i = 0; i < auxiliaryFiles; i++) {
-            std::ifstream file(tempFiles[i]);
-            if (file.is_open()) {
-                std::string line;
-                if (std::getline(file, line) && !line.empty()) {
-                    activeFiles.push_back(i);
-                }
-                file.close();
+        std::cout << "  Merging phase: " + std::to_string(mergingPhaseNumber) << std::endl;
+        // Проверяем, какие файлы содержат данные, и открываем их
+        int activeFilesIndexes = 0;
+        std::vector<std::ifstream> inputTempFilesStreams = openInputFiles(tempFiles);
+        for (int i = auxiliaryFiles - 1; i >= 0; i--) {
+            std::string line;
+            if (std::getline(inputTempFilesStreams[i], line) && !line.empty()) {
+                activeFilesIndexes++;
+                inputTempFilesStreams[i].seekg(0, std::ios::beg); // Возвращаемся в начало файла
+            }
+            else {
+                inputTempFilesStreams[i].close();
+                inputTempFilesStreams.erase(inputTempFilesStreams.begin() + i);
             }
         }
 
-        if (activeFiles.size() <= 1) {
+        if (activeFilesIndexes <= 1) {
             hasMorePhase = false; // Сортировка завершена или нечего сливать
+            closeAllFiles(inputTempFilesStreams);
+            std::cout << "  Merging completed..." << std::endl;
+            break;
         }
 
         // Создаём новые вспомогательные файлы для записи в них
         std::vector<std::string> newTempFiles = createTempFiles(auxiliaryFiles, "new_temp_");
-
-        // Открываем вспомогательные файлы для чтения
-        std::vector<std::ifstream> inputTempFilesStreams = openInputFiles(tempFiles);
 
         // Открываем новые вспомогательные файлы для записи
         std::vector<std::ofstream> outputNewTempFilesStreams = openOutputFiles(newTempFiles, std::ios::app);
@@ -182,7 +196,68 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         bool hasMoreRuns = true;
 
         while (hasMoreRuns) {
-            
+            hasMoreRuns = false;
+            // Читаем следующую строку (run) из каждого активного файла
+            std::vector<std::string> currentLines(activeFilesIndexes);
+            std::vector<bool> hasData(activeFilesIndexes, false);
+
+            for (size_t i = 0; i < activeFilesIndexes; i++) {
+                if (std::getline(inputTempFilesStreams[i], currentLines[i])) {
+                    hasData[i] = !currentLines[i].empty();
+                    if (hasData[i]) {
+                        hasMoreRuns = true;
+                    }
+                }
+                else {
+                    // Если файл закончился, больше не читаем из него
+                    hasData[i] = false;
+                }
+            }
+
+            if (!hasMoreRuns) break;
+
+            std::priority_queue<MergeElement, std::vector<MergeElement>, std::greater<MergeElement>> minHeap;
+            std::vector<std::istringstream> lineStreams(activeFilesIndexes);
+            std::vector<bool> streamActive(activeFilesIndexes);
+
+            // Инициализируем потоки для текущих строк
+            for (size_t i = 0; i < activeFilesIndexes; i++) {
+                if (hasData[i]) {
+                    lineStreams[i].str(currentLines[i]);
+                    lineStreams[i].clear();
+                    streamActive[i] = true;
+
+                    int value;
+                    if (lineStreams[i] >> value) {
+                        minHeap.push({ value, static_cast<int>(i) });
+                    }
+                }
+            }
+
+            bool firstElement = true;
+
+            // Выполняем слияние
+            while (!minHeap.empty()) {
+                MergeElement minElement = minHeap.top();
+                minHeap.pop();
+
+                if (!firstElement) outputNewTempFilesStreams[outputFileIndex] << " ";
+                outputNewTempFilesStreams[outputFileIndex] << minElement.value;
+                firstElement = false;
+
+                // Читаем следующий элемент из того же потока
+                int nextValue;
+                if (lineStreams[minElement.fileIndex] >> nextValue) {
+                    minHeap.push({ nextValue, minElement.fileIndex });
+                }
+                else {
+                    streamActive[minElement.fileIndex] = false;
+                }
+            }
+
+            outputNewTempFilesStreams[outputFileIndex] << "\n";
+
+            outputFileIndex = (outputFileIndex + 1) % auxiliaryFiles;
         }
 
         // Закрываем все вспомогательные файлы
@@ -198,7 +273,8 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         mergingPhaseNumber++;
     }
 
-
+    // TODO: copy result
+    std::cin.get();
 
     cleanupTempFiles(tempFiles);
     return true;
@@ -255,7 +331,8 @@ bool isFileContainsSortedArray(const std::string& fileName) {
 int main()
 {
     try {
-        multiphaseSort("file.txt", "result.txt", 5, 1000000);
+        createFileWithRandomNumbers("smallFile.txt", 100000, -100000, 100000);
+        multiphaseSort("smallFile.txt", "result.txt", 5);
         std::cout << (isFileContainsSortedArray("result.txt")) ? "File is sorted!" : "After multiphaseSort() file still unsorted";
     } 
     catch (const std::runtime_error& e) {
