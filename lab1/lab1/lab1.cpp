@@ -273,8 +273,25 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         mergingPhaseNumber++;
     }
 
-    // TODO: copy result
-    std::cin.get();
+    // Копируем результаты в файл resultFile
+    std::cout << "3. Copying result to output file..." << std::endl;
+    for (const auto& tempFile : tempFiles) {
+        std::ifstream tempStream = openInputFile(tempFile);
+        int value;
+        if (tempStream >> value) {
+            // Найден файл с результатом, копируем числа по одному
+            std::ofstream outputStream = openOutputFile(outputFile);
+            outputStream << value;
+            while (tempStream >> value) {
+                outputStream <<  " " << value;
+            }
+
+            outputStream.close();
+            tempStream.close();
+            break;
+        }
+        tempStream.close();
+    }
 
     cleanupTempFiles(tempFiles);
     return true;
@@ -331,9 +348,9 @@ bool isFileContainsSortedArray(const std::string& fileName) {
 int main()
 {
     try {
-        createFileWithRandomNumbers("smallFile.txt", 100000, -100000, 100000);
-        multiphaseSort("smallFile.txt", "result.txt", 5);
-        std::cout << (isFileContainsSortedArray("result.txt")) ? "File is sorted!" : "After multiphaseSort() file still unsorted";
+        createFileWithRandomNumbers("largeFile.txt", 100000000, -10000000, 10000000);
+        multiphaseSort("largeFile.txt", "largeResult.txt", 50);
+        std::cout << ((isFileContainsSortedArray("largeResult.txt")) ? "File is sorted!" : "After multiphaseSort() file still unsorted") << std::endl;
     } 
     catch (const std::runtime_error& e) {
         std::cout << "Error: " << e.what() << std::endl;
