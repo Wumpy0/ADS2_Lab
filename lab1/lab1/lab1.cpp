@@ -6,6 +6,7 @@
 #include <chrono>
 #include <queue>
 #include <sstream>
+#include <algorithm>
 
 struct MergeElement
 {
@@ -98,14 +99,14 @@ void cleanupTempFiles(const std::vector<std::string>& tempFiles) {
     }
 }
 
-bool multiphaseSort(const std::string& inputFile, const std::string& outputFile, int auxiliaryFiles = 3, long long inputFileSize = -1) {
+bool multiphaseSort(const std::string& inputFile, const std::string& resultFile, int auxiliaryFiles = 3, long long inputFileSize = -1) {
     std::cout << "Starting multiphaseSort()..." << std::endl;
     if (auxiliaryFiles < 2) {
         auxiliaryFiles = 2;
     }
     std::cout << "Number of auxiliaryFiles: " << auxiliaryFiles << std::endl;
     std::cout << "Input file: " << inputFile << std::endl;
-    std::cout << "Output file: " << outputFile << std::endl;
+    std::cout << "Result file: " << resultFile << std::endl;
 
     std::vector<std::string> tempFiles = createTempFiles(auxiliaryFiles);
 
@@ -273,27 +274,23 @@ bool multiphaseSort(const std::string& inputFile, const std::string& outputFile,
         mergingPhaseNumber++;
     }
 
-    // Копируем результаты в файл resultFile
-    std::cout << "3. Copying result to output file..." << std::endl;
+    // Ищем результат и делаем его resultFile, удаляем все ненужные файлы
+    std::cout << "3. Taking results..." << std::endl;
     for (const auto& tempFile : tempFiles) {
         std::ifstream tempStream = openInputFile(tempFile);
         int value;
         if (tempStream >> value) {
-            // Найден файл с результатом, копируем числа по одному
-            std::ofstream outputStream = openOutputFile(outputFile);
-            outputStream << value;
-            while (tempStream >> value) {
-                outputStream <<  " " << value;
-            }
-
-            outputStream.close();
+            // Найден файл с результатом, переименовывем его
             tempStream.close();
-            break;
+            std::rename(tempFile.c_str(), resultFile.c_str());
         }
-        tempStream.close();
+        else {
+            // Иначе удаляем пустой файл
+            tempStream.close();
+            std::remove(tempFile.c_str());
+        }
     }
 
-    cleanupTempFiles(tempFiles);
     return true;
 }
 
@@ -348,9 +345,22 @@ bool isFileContainsSortedArray(const std::string& fileName) {
 int main()
 {
     try {
-        createFileWithRandomNumbers("largeFile.txt", 100000000, -10000000, 10000000);
-        multiphaseSort("largeFile.txt", "largeResult.txt", 50);
-        std::cout << ((isFileContainsSortedArray("largeResult.txt")) ? "File is sorted!" : "After multiphaseSort() file still unsorted") << std::endl;
+        std::vector<std::string> files = { "smallFile.txt", "file.txt", "largeFile.txt" };
+        std::vector<std::string> results = { "smallResult.txt", "result.txt", "largeResult.txt" };
+        std::ofstream timeFile = openOutputFile("timesToSort.txt");
+        timeFile << "/// Time to sort a file into 10 additional files with file size calculation ///\n";
+        for (size_t i = 0; i < 3; i++) {
+            std::cout << "File for sorting: " + files[i] << std::endl;
+            auto start = std::chrono::high_resolution_clock::now();
+
+            multiphaseSort(files[i], results[i], 10);
+            std::cout << ((isFileContainsSortedArray(results[i])) ? "File " + files[i] + " is sorted!" : "After multiphaseSort() file still unsorted") << std::endl;
+
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> duration = end - start;
+            timeFile << "Time to sort " + files[i] + ": " << duration.count() << " sec\n";
+        }
+        timeFile.close();
     } 
     catch (const std::runtime_error& e) {
         std::cout << "Error: " << e.what() << std::endl;
