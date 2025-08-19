@@ -1,5 +1,11 @@
 ﻿#include <iostream>
+#include <queue>
+#include <random>
+
 #include "BinaryTree.h"
+
+std::random_device BinaryTree::rd;
+std::mt19937 BinaryTree::gen(BinaryTree::rd());
 
 // ============================================================================
 // РЕАЛИЗАЦИЯ КЛАССА NODE
@@ -71,16 +77,16 @@ BinaryTree::~BinaryTree() {
 // Вспомогательные методы
 void BinaryTree::destroyTree(Node* node) {
 	if (node != nullptr) {
-		destroyTree(node->getLeft());
-		destroyTree(node->getRight());
+		destroyTree(node->left);
+		destroyTree(node->right);
 		delete node;
 	}
 }
 Node* BinaryTree::copyTree(const Node* node) {
-	if (node == nullptr) {
-		return nullptr;
-	}
-	return new Node(node->getKey(), copyTree(node->getLeft()), copyTree(node->getRight()));
+    if (node == nullptr) {
+        return nullptr;
+    }
+    return new Node(node->key, copyTree(node->left), copyTree(node->right));
 }
 
 // Получение корня дерева
@@ -97,13 +103,13 @@ void BinaryTree::clear() {
 // Удаление поддеревьев узла
 void BinaryTree::removeSubtrees(Node* node) {
 	if (node != nullptr) {
-		if (node->getLeft() != nullptr) {
-			destroyTree(node->getLeft());
-			node->setLeft(nullptr);
+		if (node->left != nullptr) {
+			destroyTree(node->left);
+			node->left = nullptr;
 		}
-		if (node->getRight() != nullptr) {
-			destroyTree(node->getRight());
-			node->setRight(nullptr);
+		if (node->right != nullptr) {
+			destroyTree(node->right);
+			node->right = nullptr;
 		}
 	}
 }
@@ -111,4 +117,65 @@ void BinaryTree::removeSubtrees(Node* node) {
 // IsEmpty (возвращает true, если дерево пусто)
 bool BinaryTree::isEmpty() const {
 	return root == nullptr;
+}
+
+// Добавление узла в дерево (методом случайного выбора поддерева)
+void BinaryTree::addNode(int key) {
+	if (!root) {
+		root = new Node(key);
+		return;
+	}
+
+	std::queue<Node*> q;
+	q.push(root);
+
+	while (!q.empty()) {
+		const std::size_t levelSize = q.size();
+		std::vector<Node**> levelFree;
+		levelFree.reserve(levelSize * 2);
+
+		for (std::size_t i = 0; i < levelSize; ++i) {
+			Node* cur = q.front(); q.pop();
+
+			if (cur->left == nullptr)  levelFree.push_back(&cur->left);
+			else                       q.push(cur->left);
+
+			if (cur->right == nullptr) levelFree.push_back(&cur->right);
+			else                       q.push(cur->right);
+		}
+
+		if (!levelFree.empty()) {
+			std::uniform_int_distribution<std::size_t> dist(0, levelFree.size() - 1);
+			*levelFree[dist(gen)] = new Node(key);
+			return;
+		}
+	}
+}
+
+// Вывод в консоль дерева в горизонтальном виде (самый правый потомок находится на первой строке, самый левый - на нижней)
+void BinaryTree::printHorizontal() const {
+	printHorizontalHelper(root, 0);
+}
+
+void BinaryTree::printHorizontal(const Node* node) const {
+	printHorizontalHelper(node, 0);
+}
+
+void BinaryTree::printHorizontalHelper(const Node* node, int space) const {
+	const int COUNT = 10;
+	if (node == nullptr) {
+		return;
+	}
+
+	space += COUNT;
+
+	printHorizontalHelper(node->right, space);
+
+	std::cout << std::endl;
+	for (int i = COUNT; i < space; i++) {
+		std::cout << " ";
+	}
+	std::cout << node->key << std::endl;
+
+	printHorizontalHelper(node->left, space);
 }
