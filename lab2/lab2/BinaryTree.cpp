@@ -113,10 +113,88 @@ void BinaryTree::removeSubtrees(Node* node) {
 		}
 	}
 }
+void BinaryTree::removeSubtrees(int key) {
+	Node* node = findNode(key);
+	if (node != nullptr) {
+		removeSubtrees(node);
+	}
+}
 
 // IsEmpty (возвращает true, если дерево пусто)
 bool BinaryTree::isEmpty() const {
 	return root == nullptr;
+}
+
+// Получение высоты дерева
+int BinaryTree::getHeight() const {
+	return getHeightHelper(root);
+}
+int BinaryTree::getHeight(const Node* node) const {
+	return getHeightHelper(node);
+}
+int BinaryTree::getHeightHelper(const Node* node) const {
+	if (node == nullptr) {
+		return 0;
+	}
+	return 1 + std::max(getHeightHelper(node->left), getHeightHelper(node->right));
+}
+int BinaryTree::getCount() const {
+	return getCountHelper(root);
+}
+int BinaryTree::getCount(const Node* node) const {
+	return getCountHelper(node);
+}
+int BinaryTree::getCountHelper(const Node* node) const {
+	if (node == nullptr) {
+		return 0;
+	}
+	return 1 + getCountHelper(node->left) + getCountHelper(node->right);
+}
+
+// Получение минимального/максимального ключа дерева
+int BinaryTree::getMinKey() const {
+	if (!root) {
+		throw std::runtime_error("Tree is empty");
+	}
+	return getMinKey(root);
+}
+int BinaryTree::getMinKey(const Node* node) const {
+	if (!node) {
+		throw std::runtime_error("Node is null");
+	}
+
+	int result = node->key;
+
+	if (node->left) {
+		result = std::min(result, getMinKey(node->left));
+	}
+	if (node->right) {
+		result = std::min(result, getMinKey(node->right));
+	}
+
+	return result;
+}
+int BinaryTree::getMaxKey() const {
+	if (!root) {
+		throw std::runtime_error("Tree is empty");
+	}
+	return getMaxKey(root);
+}
+int BinaryTree::getMaxKey(const Node* node) const {
+	if (!node) {
+		throw std::runtime_error("Node is null");
+	}
+
+	int result = node->key;
+
+	if (node->left) {
+		result = std::max(result, getMaxKey(node->left));
+	}
+	if (node->right) {
+		result = std::max(result, getMaxKey(node->right));
+	}
+
+	return result;
 }
 
 // Добавление узла в дерево (методом случайного выбора поддерева)
@@ -152,15 +230,30 @@ void BinaryTree::addNode(int key) {
 	}
 }
 
+// Поиск узла дерева по ключу
+Node* BinaryTree::findNode(int key) const {
+	return findNode(root, key);
+}
+Node* BinaryTree::findNode(Node* node, int key) const {
+	if (node == nullptr || node->key == key) {
+		return node;
+	}
+
+	Node* leftResult = findNode(node->left, key);
+	if (leftResult != nullptr) {
+		return leftResult;
+	}
+
+	return findNode(node->right, key);
+}
+
 // Вывод в консоль дерева в горизонтальном виде (самый правый потомок находится на первой строке, самый левый - на нижней)
 void BinaryTree::printHorizontal() const {
 	printHorizontalHelper(root, 0);
 }
-
 void BinaryTree::printHorizontal(const Node* node) const {
 	printHorizontalHelper(node, 0);
 }
-
 void BinaryTree::printHorizontalHelper(const Node* node, int space) const {
 	const int COUNT = 10;
 	if (node == nullptr) {
