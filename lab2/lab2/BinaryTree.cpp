@@ -247,6 +247,77 @@ Node* BinaryTree::findNode(Node* node, int key) const {
 	return findNode(node->right, key);
 }
 
+// Проверка дерева на сбалансированность (возвращает true, если дерево является сбалансированным: высоты правого и левого поддеревьев отличаются не более, чем на единицу, и сами поддеревья также являются сбалансированными)
+bool BinaryTree::isBalanced() const {
+	return isBalancedHelper(root);
+}
+
+bool BinaryTree::isBalanced(const Node* node) const {
+	return isBalancedHelper(node);
+}
+
+bool BinaryTree::isBalancedHelper(const Node* node) const {
+	if (node == nullptr) {
+		return true;
+	}
+
+	int leftHeight = getHeightHelper(node->left);
+	int rightHeight = getHeightHelper(node->right);
+
+	return std::abs(leftHeight - rightHeight) <= 1 &&
+		isBalancedHelper(node->left) &&
+		isBalancedHelper(node->right);
+}
+
+// Получение уровня вершины по ключу (возвращает индекс уровня или -1, если вершина не найдена)
+int BinaryTree::getLevel(int key) const {
+	return getLevelHelper(root, key, 0);
+}
+
+int BinaryTree::getLevel(const Node* node, int key) const {
+	return getLevelHelper(node, key, 0);
+}
+
+int BinaryTree::getLevelHelper(const Node* node, int key, int currentLevel) const {
+	if (node == nullptr) {
+		return -1;
+	}
+
+	if (node->key == key) {
+		return currentLevel;
+	}
+
+	int leftLevel = getLevelHelper(node->left, key, currentLevel + 1);
+	if (leftLevel != -1) {
+		return leftLevel;
+	}
+
+	return getLevelHelper(node->right, key, currentLevel + 1);
+}
+
+// Получение вектора (std::vector<int>), содержащего все ключи дерева по возрастанию (обход вершин производить любым способом)
+std::vector<int> BinaryTree::getSortedKeys() const {
+	std::vector<int> keys;
+	inOrderTraversal(root, keys);
+	std::sort(keys.begin(), keys.end());
+	return keys;
+}
+
+std::vector<int> BinaryTree::getSortedKeys(const Node* node) const {
+	std::vector<int> keys;
+	inOrderTraversal(node, keys);
+	std::sort(keys.begin(), keys.end());
+	return keys;
+}
+
+void BinaryTree::inOrderTraversal(const Node* node, std::vector<int>& keys) const {
+	if (node != nullptr) {
+		keys.push_back(node->key);
+		inOrderTraversal(node->left, keys);
+		inOrderTraversal(node->right, keys);
+	}
+}
+
 // Вывод в консоль дерева в горизонтальном виде (самый правый потомок находится на первой строке, самый левый - на нижней)
 void BinaryTree::printHorizontal() const {
 	printHorizontalHelper(root, 0);
@@ -271,4 +342,58 @@ void BinaryTree::printHorizontalHelper(const Node* node, int space) const {
 	std::cout << node->key << std::endl;
 
 	printHorizontalHelper(node->left, space);
+}
+
+// Вывод в консоль дерева по уровням в консоль
+void BinaryTree::printByLevels() const {
+	printByLevels(root);
+}
+
+void BinaryTree::printByLevels(const Node* node) const {
+	if (node == nullptr) {
+		std::cout << "Tree is empty" << std::endl;
+		return;
+	}
+
+	std::queue<const Node*> queue;
+	queue.push(node);
+
+	while (!queue.empty()) {
+		int levelSize = queue.size();
+
+		for (int i = 0; i < levelSize; i++) {
+			const Node* current = queue.front();
+			queue.pop();
+
+			std::cout << current->key << " ";
+
+			if (current->left != nullptr) {
+				queue.push(current->left);
+			}
+			if (current->right != nullptr) {
+				queue.push(current->right);
+			}
+		}
+		std::cout << std::endl;
+	}
+}
+
+// Оператор присваивания
+BinaryTree& BinaryTree::operator=(const BinaryTree& other) {
+	if (this != &other) {
+		clear();
+		if (other.root != nullptr) {
+			root = copyTree(other.root);
+		}
+	}
+	return *this;
+}
+// Оператор перемещения
+BinaryTree& BinaryTree::operator=(BinaryTree&& other) noexcept {
+	if (this != &other) {
+		clear();
+		root = other.root;
+		other.root = nullptr;
+	}
+	return *this;
 }

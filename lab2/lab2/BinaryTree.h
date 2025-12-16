@@ -65,14 +65,24 @@ public:
 	Node* findNode(int key) const;
 	Node* findNode(Node* node, int key) const;
 	// Проверка дерева на сбалансированность (возвращает true, если дерево является сбалансированным: высоты правого и левого поддеревьев отличаются не более, чем на единицу, и сами поддеревья также являются сбалансированными)
+	bool isBalanced() const;
+	bool isBalanced(const Node* node) const;
 	// Получение уровня вершины по ключу (возвращает индекс уровня или -1, если вершина не найдена)
+	int getLevel(int key) const;
+	int getLevel(const Node* node, int key) const;
 	// Получение вектора (std::vector<int>), содержащего все ключи дерева по возрастанию (обход вершин производить любым способом)
+	std::vector<int> getSortedKeys() const;
+	std::vector<int> getSortedKeys(const Node* node) const;
 	// Вывод в консоль дерева в горизонтальном виде (самый правый потомок находится на первой строке, самый левый - на нижней)
 	void printHorizontal() const;
 	void printHorizontal(const Node* node) const;
 	// Вывод в консоль дерева по уровням в консоль
+	void printByLevels() const;
+	void printByLevels(const Node* node) const;
 	// Оператор присваивания
+	BinaryTree& operator=(const BinaryTree& other);
 	// Оператор перемещения
+	BinaryTree& operator=(BinaryTree&& other) noexcept;
 private:
 	// Вспомогательные методы
 	void destroyTree(Node* node);
@@ -80,6 +90,9 @@ private:
 	void printHorizontalHelper(const Node* node, int space) const;
 	int getHeightHelper(const Node* node) const;
 	int getCountHelper(const Node* node) const;
+	bool isBalancedHelper(const Node* node) const;
+	int getLevelHelper(const Node* node, int key, int currentLevel) const;
+	void inOrderTraversal(const Node* node, std::vector<int>& keys) const;
 private:
 	Node* root;
 
