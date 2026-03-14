@@ -1,11 +1,132 @@
 ﻿#include <iostream>
 #include <queue>
 #include <random>
+#include <algorithm>
 
 #include "BinaryTree.h"
 
 std::random_device BinaryTree::rd;
 std::mt19937 BinaryTree::gen(BinaryTree::rd());
+
+// ============================================================================
+// РЕАЛИЗАЦИЯ КЛАССОВ BFS ИТЕРАТОРОВ
+// ============================================================================
+
+// BinaryTree::iterator (BFS - Breadth First Search) реализация
+
+BinaryTree::iterator::iterator(Node* root) : current(nullptr)
+{
+	if (root != nullptr) {
+		nodeQueue.push(root);
+		current = nodeQueue.front();
+		nodeQueue.pop();
+	}
+}
+
+BinaryTree::iterator::iterator() : current(nullptr)
+{
+}
+
+int BinaryTree::iterator::operator*() const
+{
+	return current->getKey();
+}
+
+BinaryTree::iterator& BinaryTree::iterator::operator++()
+{
+	if (current == nullptr) {
+		return *this;
+	}
+
+	// Добавляем левого потомка
+	if (current->getLeft() != nullptr) {
+		nodeQueue.push(current->getLeft());
+	}
+
+	// Добавляем правого потомка
+	if (current->getRight() != nullptr) {
+		nodeQueue.push(current->getRight());
+	}
+
+	// Переходим к следующему узлу в очереди
+	if (!nodeQueue.empty()) {
+		current = nodeQueue.front();
+		nodeQueue.pop();
+	}
+	else {
+		current = nullptr;
+	}
+
+	return *this;
+}
+
+bool BinaryTree::iterator::operator==(const iterator& other) const
+{
+	return current == other.current;
+}
+
+bool BinaryTree::iterator::operator!=(const iterator& other) const
+{
+	return current != other.current;
+}
+
+// BinaryTree::const_iterator (BFS - Breadth First Search) реализация
+
+BinaryTree::const_iterator::const_iterator(const Node* root) : current(nullptr)
+{
+	if (root != nullptr) {
+		nodeQueue.push(root);
+		current = nodeQueue.front();
+		nodeQueue.pop();
+	}
+}
+
+BinaryTree::const_iterator::const_iterator() : current(nullptr)
+{
+}
+
+int BinaryTree::const_iterator::operator*() const
+{
+	return current->getKey();
+}
+
+BinaryTree::const_iterator& BinaryTree::const_iterator::operator++()
+{
+	if (current == nullptr) {
+		return *this;
+	}
+
+	// Добавляем левого потомка
+	if (current->getLeft() != nullptr) {
+		nodeQueue.push(current->getLeft());
+	}
+
+	// Добавляем правого потомка
+	if (current->getRight() != nullptr) {
+		nodeQueue.push(current->getRight());
+	}
+
+	// Переходим к следующему узлу в очереди
+	if (!nodeQueue.empty()) {
+		current = nodeQueue.front();
+		nodeQueue.pop();
+	}
+	else {
+		current = nullptr;
+	}
+
+	return *this;
+}
+
+bool BinaryTree::const_iterator::operator==(const const_iterator& other) const
+{
+	return current == other.current;
+}
+
+bool BinaryTree::const_iterator::operator!=(const const_iterator& other) const
+{
+	return current != other.current;
+}
 
 // ============================================================================
 // РЕАЛИЗАЦИЯ КЛАССА NODE
@@ -409,4 +530,29 @@ BinaryTree& BinaryTree::operator=(BinaryTree&& other) noexcept {
 		other.root = nullptr;
 	}
 	return *this;
+}
+
+// Итераторы
+BinaryTree::iterator BinaryTree::begin() {
+	return iterator(root);
+}
+
+BinaryTree::iterator BinaryTree::end() {
+	return iterator();
+}
+
+BinaryTree::const_iterator BinaryTree::begin() const {
+	return const_iterator(root);
+}
+
+BinaryTree::const_iterator BinaryTree::end() const {
+	return const_iterator();
+}
+
+BinaryTree::const_iterator BinaryTree::cbegin() const {
+	return const_iterator(root);
+}
+
+BinaryTree::const_iterator BinaryTree::cend() const {
+	return const_iterator();
 }

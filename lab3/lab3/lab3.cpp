@@ -61,5 +61,35 @@ int main()
     std::cout << "Moved tree:" << std::endl;
     bst3.printByLevels();
 
+    // Test iterators
+    std::cout << "\n=== LNR Iterator Test (range-based for loop) ===" << std::endl;
+    std::cout << "Iterating through BST (LNR order):" << std::endl;
+    for (int key : bst) {
+        std::cout << key << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "\n=== Explicit Iterator Test ===" << std::endl;
+    std::cout << "Using explicit iterator:" << std::endl;
+    for (auto it = bst.begin(); it != bst.end(); ++it) {
+        std::cout << *it << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "\n=== Const Iterator Test ===" << std::endl;
+    const BinarySearchTree& constBst = bst;
+    std::cout << "Using const_iterator:" << std::endl;
+    for (auto it = constBst.begin(); it != constBst.end(); ++it) {
+        std::cout << *it << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "\n=== cbegin/cend Test ===" << std::endl;
+    std::cout << "Using cbegin/cend:" << std::endl;
+    for (auto it = bst.cbegin(); it != bst.cend(); ++it) {
+        std::cout << *it << " ";
+    }
+    std::cout << std::endl;
+
     return 0;
 }

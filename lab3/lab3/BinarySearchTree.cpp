@@ -2,26 +2,138 @@
 #include "BinarySearchTree.h"
 
 // ============================================================================
+// РЕАЛИЗАЦИЯ КЛАССА iterator
+// ============================================================================
+
+BinarySearchTree::iterator::iterator(Node* root) : current(nullptr)
+{
+    pushLeft(root);
+    if (!nodeStack.empty()) {
+        current = nodeStack.top();
+        nodeStack.pop();
+    }
+}
+
+BinarySearchTree::iterator::iterator() : current(nullptr)
+{
+}
+
+void BinarySearchTree::iterator::pushLeft(Node* node)
+{
+    while (node != nullptr) {
+        nodeStack.push(node);
+        node = node->getLeft();
+    }
+}
+
+int BinarySearchTree::iterator::operator*() const
+{
+    return current->getKey();
+}
+
+BinarySearchTree::iterator& BinarySearchTree::iterator::operator++()
+{
+    if (current == nullptr) {
+        return *this;
+    }
+
+    if (current->getRight() != nullptr) {
+        pushLeft(current->getRight());
+    }
+
+    if (!nodeStack.empty()) {
+        current = nodeStack.top();
+        nodeStack.pop();
+    }
+    else {
+        current = nullptr;
+    }
+
+    return *this;
+}
+
+bool BinarySearchTree::iterator::operator==(const iterator& other) const
+{
+    return current == other.current;
+}
+
+bool BinarySearchTree::iterator::operator!=(const iterator& other) const
+{
+    return current != other.current;
+}
+
+// ============================================================================
+// РЕАЛИЗАЦИЯ КЛАССА const_iterator
+// ============================================================================
+
+BinarySearchTree::const_iterator::const_iterator(const Node* root) : current(nullptr)
+{
+    pushLeft(root);
+    if (!nodeStack.empty()) {
+        current = nodeStack.top();
+        nodeStack.pop();
+    }
+}
+
+BinarySearchTree::const_iterator::const_iterator() : current(nullptr)
+{
+}
+
+void BinarySearchTree::const_iterator::pushLeft(const Node* node)
+{
+    while (node != nullptr) {
+        nodeStack.push(node);
+        node = node->getLeft();
+    }
+}
+
+int BinarySearchTree::const_iterator::operator*() const
+{
+    return current->getKey();
+}
+
+BinarySearchTree::const_iterator& BinarySearchTree::const_iterator::operator++()
+{
+    if (current == nullptr) {
+        return *this;
+    }
+
+    if (current->getRight() != nullptr) {
+        pushLeft(current->getRight());
+    }
+
+    if (!nodeStack.empty()) {
+        current = nodeStack.top();
+        nodeStack.pop();
+    }
+    else {
+        current = nullptr;
+    }
+
+    return *this;
+}
+
+bool BinarySearchTree::const_iterator::operator==(const const_iterator& other) const
+{
+    return current == other.current;
+}
+
+bool BinarySearchTree::const_iterator::operator!=(const const_iterator& other) const
+{
+    return current != other.current;
+}
+
+// ============================================================================
 // РЕАЛИЗАЦИЯ КЛАССА BINARYSEARCHTREE
 // ============================================================================
 
 // Конструкторы (по умолчанию, копирования, перемещения)
-BinarySearchTree::BinarySearchTree() : BinaryTree()
-{
-}
-
-BinarySearchTree::BinarySearchTree(const BinarySearchTree& other) : BinaryTree(other)
-{
-}
-
-BinarySearchTree::BinarySearchTree(BinarySearchTree&& other) noexcept : BinaryTree(std::move(other))
-{
-}
+BinarySearchTree::BinarySearchTree() = default;
+BinarySearchTree::BinarySearchTree(const BinarySearchTree& other) : BinaryTree(other) {}
+BinarySearchTree::BinarySearchTree(BinarySearchTree&& other) noexcept : BinaryTree(std::move(other)) {}
 
 // Деструктор
-BinarySearchTree::~BinarySearchTree()
-{
-}
+BinarySearchTree::~BinarySearchTree() = default;
 
 // Получение минимального ключа дерева (имеет другой алгоритм)
 int BinarySearchTree::getMinKey() const
@@ -209,4 +321,35 @@ BinarySearchTree& BinarySearchTree::operator=(BinarySearchTree&& other) noexcept
 {
     BinaryTree::operator=(std::move(other));
     return *this;
+}
+
+// Итераторы для LNR обхода
+BinarySearchTree::iterator BinarySearchTree::begin()
+{
+    return iterator(getRoot());
+}
+
+BinarySearchTree::iterator BinarySearchTree::end()
+{
+    return iterator();
+}
+
+BinarySearchTree::const_iterator BinarySearchTree::begin() const
+{
+    return const_iterator(getRoot());
+}
+
+BinarySearchTree::const_iterator BinarySearchTree::end() const
+{
+    return const_iterator();
+}
+
+BinarySearchTree::const_iterator BinarySearchTree::cbegin() const
+{
+    return const_iterator(getRoot());
+}
+
+BinarySearchTree::const_iterator BinarySearchTree::cend() const
+{
+    return const_iterator();
 }

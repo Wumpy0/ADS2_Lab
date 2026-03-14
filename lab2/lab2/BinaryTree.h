@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <queue>
 
 class Node
 {
@@ -36,6 +37,52 @@ private:
 class BinaryTree
 {
 public:
+	// Итератор для BFS (Breadth-First Search) обхода - ширина дерева
+	class iterator
+	{
+	public:
+		using difference_type = std::ptrdiff_t;
+		using value_type = int;
+		using pointer = int*;
+		using reference = int&;
+		using iterator_category = std::forward_iterator_tag;
+
+		iterator(Node* root);
+		iterator();
+
+		int operator*() const;
+		iterator& operator++();
+		bool operator==(const iterator& other) const;
+		bool operator!=(const iterator& other) const;
+
+	private:
+		Node* current;
+		std::queue<Node*> nodeQueue;
+	};
+
+	// Константный итератор для BFS (Breadth-First Search) обхода
+	class const_iterator
+	{
+	public:
+		using difference_type = std::ptrdiff_t;
+		using value_type = int;
+		using pointer = const int*;
+		using reference = const int&;
+		using iterator_category = std::forward_iterator_tag;
+
+		const_iterator(const Node* root);
+		const_iterator();
+
+		int operator*() const;
+		const_iterator& operator++();
+		bool operator==(const const_iterator& other) const;
+		bool operator!=(const const_iterator& other) const;
+
+	private:
+		const Node* current;
+		std::queue<const Node*> nodeQueue;
+	};
+
 	// Конструкторы (по умолчанию, копирования, перемещения)
 	BinaryTree();
 	BinaryTree(const BinaryTree& other);
@@ -87,6 +134,13 @@ public:
 	BinaryTree& operator=(const BinaryTree& other);
 	// Оператор перемещения
 	BinaryTree& operator=(BinaryTree&& other) noexcept;
+	// Итераторы для BFS обхода
+	iterator begin();
+	iterator end();
+	const_iterator begin() const;
+	const_iterator end() const;
+	const_iterator cbegin() const;
+	const_iterator cend() const;
 protected:
 	// Получение ссылки на корень (для наследников)
 	Node*& getRootRef();
