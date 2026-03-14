@@ -26,7 +26,11 @@ private:
 	Node* left;
 	Node* right;
 
+	// Методы для получения ссылок на потомков (для наследников)
 	friend class BinaryTree;
+	friend class BinarySearchTree;
+	Node*& getLeftRef();
+	Node*& getRightRef();
 };
 
 class BinaryTree
@@ -54,25 +58,25 @@ public:
 	int getCount() const;
 	int getCount(const Node* node) const;
 	// Получение минимального/максимального ключа дерева
-	int getMinKey() const;
-	int getMinKey(const Node* node) const;
+	virtual int getMinKey() const;
+	virtual int getMinKey(const Node* node) const;
 	int getMaxKey() const;
 	int getMaxKey(const Node* node) const;
 	// Добавление узла в дерево (методом случайного выбора поддерева)
-	void addNode(int key);
+	virtual void addNode(int key);
 	// Удаление узла из дерева по ключу (возвращает true, если узел был удалён)
 	// Поиск узла дерева по ключу
-	Node* findNode(int key) const;
-	Node* findNode(Node* node, int key) const;
+	virtual Node* findNode(int key) const;
+	virtual Node* findNode(Node* node, int key) const;
 	// Проверка дерева на сбалансированность (возвращает true, если дерево является сбалансированным: высоты правого и левого поддеревьев отличаются не более, чем на единицу, и сами поддеревья также являются сбалансированными)
 	bool isBalanced() const;
 	bool isBalanced(const Node* node) const;
 	// Получение уровня вершины по ключу (возвращает индекс уровня или -1, если вершина не найдена)
-	int getLevel(int key) const;
-	int getLevel(const Node* node, int key) const;
+	virtual int getLevel(int key) const;
+	virtual int getLevel(const Node* node, int key) const;
 	// Получение вектора (std::vector<int>), содержащего все ключи дерева по возрастанию (обход вершин производить любым способом)
-	std::vector<int> getSortedKeys() const;
-	std::vector<int> getSortedKeys(const Node* node) const;
+	virtual std::vector<int> getSortedKeys() const;
+	virtual std::vector<int> getSortedKeys(const Node* node) const;
 	// Вывод в консоль дерева в горизонтальном виде (самый правый потомок находится на первой строке, самый левый - на нижней)
 	void printHorizontal() const;
 	void printHorizontal(const Node* node) const;
@@ -83,6 +87,9 @@ public:
 	BinaryTree& operator=(const BinaryTree& other);
 	// Оператор перемещения
 	BinaryTree& operator=(BinaryTree&& other) noexcept;
+protected:
+	// Получение ссылки на корень (для наследников)
+	Node*& getRootRef();
 private:
 	// Вспомогательные методы
 	void destroyTree(Node* node);

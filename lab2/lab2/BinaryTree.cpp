@@ -53,6 +53,14 @@ void Node::setRight(Node* right) {
 	this->right = right;
 }
 
+// Получение ссылок на потомков (для наследников)
+Node*& Node::getLeftRef() {
+	return left;
+}
+Node*& Node::getRightRef() {
+	return right;
+}
+
 // ============================================================================
 // РЕАЛИЗАЦИЯ КЛАССА BINARYTREE
 // ============================================================================
@@ -91,6 +99,11 @@ Node* BinaryTree::copyTree(const Node* node) {
 
 // Получение корня дерева
 Node* BinaryTree::getRoot() const {
+	return root;
+}
+
+// Получение ссылки на корень (для наследников)
+Node*& BinaryTree::getRootRef() {
 	return root;
 }
 
