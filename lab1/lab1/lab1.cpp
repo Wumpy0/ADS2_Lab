@@ -6,7 +6,10 @@
 #include <chrono>
 #include <queue>
 #include <sstream>
-#include <algorithm>
+#include <functional>
+#include <cstdio>
+#include <stdexcept>
+#include <utility>
 
 struct MergeElement
 {
@@ -99,7 +102,7 @@ void cleanupTempFiles(const std::vector<std::string>& tempFiles) {
     }
 }
 
-bool multiphaseSort(const std::string& inputFile, const std::string& resultFile, int auxiliaryFiles = 3, long long inputFileSize = -1) {
+bool multiphaseSort(const std::string& inputFile, const std::string& resultFile, int auxiliaryFiles = 3) {
     std::cout << "Starting multiphaseSort()..." << std::endl;
     if (auxiliaryFiles < 2) {
         auxiliaryFiles = 2;
@@ -110,50 +113,57 @@ bool multiphaseSort(const std::string& inputFile, const std::string& resultFile,
 
     std::vector<std::string> tempFiles = createTempFiles(auxiliaryFiles);
 
-    if (inputFileSize < 0) {
-        inputFileSize = countNumbersInFile(inputFile);
-    }
-    if (inputFileSize == 0) {
-        return true;
-    }
-    std::cout << "Size of input file: " << inputFileSize << std::endl;
-
     // Разделяем исходный файл
-    int runSize = std::max(1000LL, inputFileSize / (auxiliaryFiles * 100));
-    std::cout << "Run size: " << runSize << std::endl;
     std::cout << "1. Splitting the input file..." << std::endl;
 
     std::ifstream input = openInputFile(inputFile);
 
-    std::vector<int> buffer(runSize);
-    int currentFile = 0;
-    int numberFromFile;
-
     // Открываем вспомогательные файлы
     std::vector<std::ofstream> outputTempFilesStreams = openOutputFiles(tempFiles);
 
-    // Записываем блоки в файлы
-    while (input >> numberFromFile) {
-        buffer.clear();
-        buffer.push_back(numberFromFile);
+    // Используем алгоритм replacement-selection: два кучи (текущая и следующая)
+    // чтобы никогда не держать в памяти больше, чем auxiliaryFiles элементов.
+    std::priority_queue<int, std::vector<int>, std::greater<int>> currentHeap;
+    std::priority_queue<int, std::vector<int>, std::greater<int>> nextHeap;
 
-        // Читаем блок размером runSize
-        for (int i = 1; i < runSize && (input >> numberFromFile); i++) {
-            buffer.push_back(numberFromFile);
-        }
-
-        // Сортируем блок
-        std::sort(buffer.begin(), buffer.end());
-
-        // Записываем отсортированный блок во временный файл
-        for (size_t i = 0; i < buffer.size(); i++) {
-            outputTempFilesStreams[currentFile] << buffer[i];
-            if (i < buffer.size() - 1) outputTempFilesStreams[currentFile] << " ";
-        }
-        outputTempFilesStreams[currentFile] << "\n"; // Разделитель между отсортированными блоками
-
-        currentFile = (currentFile + 1) % tempFiles.size();
+    int numberFromFile;
+    // Инициализируем текущую кучу
+    for (int i = 0; i < auxiliaryFiles && (input >> numberFromFile); ++i) {
+        currentHeap.push(numberFromFile);
     }
+
+    int currentFile = 0;
+    bool firstInRun = true;
+
+    while (!currentHeap.empty()) {
+        int minVal = currentHeap.top();
+        currentHeap.pop();
+
+        // Записываем элемент в текущий временный файл
+        if (!firstInRun) outputTempFilesStreams[currentFile] << " ";
+        outputTempFilesStreams[currentFile] << minVal;
+        firstInRun = false;
+
+        // Пытаемся прочитать следующий элемент из входного файла
+        if (input >> numberFromFile) {
+            if (numberFromFile >= minVal) {
+                // Может остаться в текущем ранге
+                currentHeap.push(numberFromFile);
+            } else {
+                // Принадлежит следующему рангу
+                nextHeap.push(numberFromFile);
+            }
+        }
+
+        // Если текущая куча опустела, завершаем ран и переключаемся
+        if (currentHeap.empty()) {
+            outputTempFilesStreams[currentFile] << "\n";
+            currentFile = (currentFile + 1) % tempFiles.size();
+            std::swap(currentHeap, nextHeap);
+            firstInRun = true;
+        }
+    }
+
     // Закрываем файлы
     closeAllFiles(outputTempFilesStreams);
     input.close();
@@ -306,7 +316,7 @@ bool createFileWithRandomNumbers(const std::string& fileName, const int numbersC
     int remaining = numbersCount;
 
     while (remaining > 0) {
-        int currentBatch = std::min(batchSize, remaining);
+        int currentBatch = (batchSize < remaining) ? batchSize : remaining;
 
         for (int i = 0; i < currentBatch; i++) {
             file << dis(gen) << " ";
@@ -345,23 +355,25 @@ bool isFileContainsSortedArray(const std::string& fileName) {
 int main()
 {
     try {
-        std::vector<std::string> files = { "smallFile.txt", "file.txt", "largeFile.txt" };
-        std::vector<std::string> results = { "smallResult.txt", "result.txt", "largeResult.txt" };
-        std::ofstream timeFile = openOutputFile("timesToSort.txt");
-        timeFile << "/// Time to sort a file into 10 additional files with file size calculation ///\n";
-        for (size_t i = 0; i < 3; i++) {
-            std::cout << "File for sorting: " + files[i] << std::endl;
-            auto start = std::chrono::high_resolution_clock::now();
+        const std::string inputFile = "test_input.txt";
+        const std::string resultFile = "test_result.txt";
 
-            multiphaseSort(files[i], results[i], 10);
-            std::cout << ((isFileContainsSortedArray(results[i])) ? "File " + files[i] + " is sorted!" : "After multiphaseSort() file still unsorted") << std::endl;
+        const int numbersCount = 100;
+        createFileWithRandomNumbers(inputFile, numbersCount, 0, 1000);
 
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> duration = end - start;
-            timeFile << "Time to sort " + files[i] + ": " << duration.count() << " sec\n";
-        }
-        timeFile.close();
-    } 
+        std::cout << "Sorting file: " << inputFile << std::endl;
+        std::cout << "File size: " << numbersCount << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
+
+        multiphaseSort(inputFile, resultFile, 3);
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+        std::cout << "Sorting took " << duration.count() << " sec" << std::endl;
+
+        bool sorted = isFileContainsSortedArray(resultFile);
+        std::cout << (sorted ? "Result file is sorted." : "Result file is NOT sorted.") << std::endl;
+    }
     catch (const std::runtime_error& e) {
         std::cout << "Error: " << e.what() << std::endl;
     }
